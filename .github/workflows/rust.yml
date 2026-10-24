@@ -1,9 +1,13 @@
 name: Rust
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
-  pull_request:
+    # Creating a GitHub release with a new tag also pushes that tag.
+    tags: ["v*"]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
