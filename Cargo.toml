@@ -6,6 +6,7 @@ members = ["crates/*"]
 edition = "2024"
 version = "0.1.0"
 license = "MIT"
+rust-version = "1.98"
 
 [workspace.dependencies]
 thiserror = "2"
