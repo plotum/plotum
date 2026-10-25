@@ -5,5 +5,5 @@ mod ir;
 mod parse;
 
 pub use error::{ParseError, Span};
-pub use ir::{Diagram, Edge};
+pub use ir::{ArrowKind, Diagram, Direction, Edge, Stroke};
 pub use parse::parse;

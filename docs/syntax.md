@@ -98,14 +98,18 @@ db [PostgreSQL | primary]
 
 ## Links
 
-| Element     | Syntax          | Example             |
-| ----------- | --------------- | ------------------- |
-| Solid arrow | `a -> b`        |                     |
-| Dashed      | `a --> b`       |                     |
-| Dotted      | `a ..> b`       |                     |
-| Plain line  | `a --- b`       |                     |
-| Both ways   | `a <-> b`       |                     |
-| Label       | `a -> b : text` | `a -> b : HTTP 200` |
+| Stroke     | Forward   | Backward  | Both ways  |
+| ---------- | --------- | --------- | ---------- |
+| Solid      | `a -> b`  | `a <- b`  | `a <-> b`  |
+| Dashed     | `a --> b` | `a <-- b` | `a <--> b` |
+| Dotted     | `a ..> b` | `a <.. b` | `a <..> b` |
+| Plain line | `a --- b` |           |            |
+
+A plain line has no arrowhead, so it has no direction.
+
+| Element | Syntax          | Example             |
+| ------- | --------------- | ------------------- |
+| Label   | `a -> b : text` | `a -> b : HTTP 200` |
 
 ```plotum
 client -> api : GET /orders
