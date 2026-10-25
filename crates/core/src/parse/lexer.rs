@@ -1,18 +1,5 @@
+use super::token::{Token, get_word};
 use crate::error::Span;
-
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Token<'a> {
-    Ident(&'a str),
-    // Arrow will begin another enum at the end (I hope)
-    Arrow,
-}
-
-fn get_word(word: &str) -> Token<'_> {
-    match word {
-        "->" => Token::Arrow,
-        _ => Token::Ident(word),
-    }
-}
 
 pub(crate) fn lex_line(line: &str, line_number: usize) -> Vec<(Token<'_>, Span)> {
     // Empty list (type defined with the first push)
@@ -50,6 +37,7 @@ pub(crate) fn lex_line(line: &str, line_number: usize) -> Vec<(Token<'_>, Span)>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parse::token::ArrowKind;
 
     #[test]
     fn lexes_an_edge() {
@@ -64,6 +52,13 @@ mod tests {
         // a give Token::Indent("a")
         // -> give Token::Arrow
         // b give Token::Indent("b")
-        assert_eq!(tokens, [Token::Ident("a"), Token::Arrow, Token::Ident("b")]);
+        assert_eq!(
+            tokens,
+            [
+                Token::Ident("a"),
+                Token::Arrow(ArrowKind::Classic),
+                Token::Ident("b")
+            ]
+        );
     }
 }

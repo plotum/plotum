@@ -1,4 +1,5 @@
-use super::lexer::{Token, lex_line};
+use super::lexer::lex_line;
+use super::token::Token;
 use crate::error::ParseError;
 use crate::ir::{Diagram, Edge};
 
@@ -13,7 +14,7 @@ pub fn parse(source: &str) -> Result<Diagram, ParseError> {
             // Check only here if a -> b exists
             [
                 (Token::Ident(from), span),
-                (Token::Arrow, _),
+                (Token::Arrow(_), _),
                 (Token::Ident(to), _),
             ] => {
                 diagram.edges.push(Edge {
