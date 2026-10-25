@@ -1,3 +1,4 @@
+mod comment;
 mod lexer;
 mod parser;
 mod token;
