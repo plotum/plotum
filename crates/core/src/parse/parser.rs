@@ -7,7 +7,6 @@ pub fn parse(source: &str) -> Result<Diagram, ParseError> {
 
     // Read each line
     for (index, line) in source.lines().enumerate() {
-
         let tokens = lex_line(line, index + 1);
 
         match tokens.as_slice() {
