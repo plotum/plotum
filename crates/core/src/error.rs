@@ -9,4 +9,6 @@ pub struct Span {
 pub enum ParseError {
     #[error("{}:{}: expected `a -> b`", span.line, span.column)]
     ExpectedEdge { span: Span },
+    #[error("{}:{}: expected `*/` to close the comment", span.line, span.column)]
+    UnclosedComment { span: Span },
 }
