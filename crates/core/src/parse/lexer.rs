@@ -37,7 +37,7 @@ pub(crate) fn lex_line(line: &str, line_number: usize) -> Vec<(Token<'_>, Span)>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parse::token::ArrowKind;
+    use crate::ir::{ArrowKind, Direction, Stroke};
 
     #[test]
     fn lexes_an_edge() {
@@ -50,13 +50,42 @@ mod tests {
         }
 
         // a give Token::Indent("a")
-        // -> give Token::Arrow
+        // -> give Token::Arrow(Solid, Forward)
         // b give Token::Indent("b")
         assert_eq!(
             tokens,
             [
                 Token::Ident("a"),
-                Token::Arrow(ArrowKind::Classic),
+                Token::Arrow(ArrowKind::Pointed {
+                    stroke: Stroke::Solid,
+                    direction: Direction::Forward
+                }),
+                Token::Ident("b")
+            ]
+        );
+    }
+
+    #[test]
+    fn lexes_an_edge_reverse() {
+        let result = lex_line("a <- b", 1);
+
+        let mut tokens = Vec::new();
+
+        for (token, _position) in result {
+            tokens.push(token);
+        }
+
+        // a give Token::Indent("a")
+        // <- give Token::Arrow(Solid, Backward)
+        // b give Token::Indent("b")
+        assert_eq!(
+            tokens,
+            [
+                Token::Ident("a"),
+                Token::Arrow(ArrowKind::Pointed {
+                    stroke: Stroke::Solid,
+                    direction: Direction::Backward
+                }),
                 Token::Ident("b")
             ]
         );
