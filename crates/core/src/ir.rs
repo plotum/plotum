@@ -2,7 +2,22 @@ use crate::error::Span;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Diagram {
+    pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Node {
+    pub id: String,
+    pub label: String,
+    pub shape: Shape,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Shape {
+    Circle,                          // id (Label)
+    Box { subtext: Option<String> }, // id [Label | subtext]
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -11,7 +26,7 @@ pub struct Edge {
     pub to: String,
     pub kind: ArrowKind,
     pub span: Span,
-    pub label: Option<String>
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
