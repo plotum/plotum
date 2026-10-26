@@ -11,6 +11,7 @@ pub struct Edge {
     pub to: String,
     pub kind: ArrowKind,
     pub span: Span,
+    pub label: Option<String>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
