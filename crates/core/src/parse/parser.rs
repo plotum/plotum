@@ -206,10 +206,4 @@ mod tests {
         let error = parse("api [API").unwrap_err();
         assert_eq!(error.to_string(), "1:5: expected `]` to close this");
     }
-
-    #[test]
-    fn show() {
-        let source = "alice (Alice)\ns1 [Serveur 1 | WebSocket]\nalice -> s1 : message";
-        dbg!(parse(source));
-    }
 }
