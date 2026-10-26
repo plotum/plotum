@@ -5,10 +5,10 @@ pub(crate) enum Token<'a> {
     Ident(&'a str),
     // Arrow can have some different style
     Arrow(ArrowKind),
-    Round(&'a str),     // (Browser)
-    Square(&'a str),    // [Browser]
-    Quoted(&'a str),    // "Browser"
-    Style(&'a str),     // {red_color}
+    Round(&'a str),  // (Browser)
+    Square(&'a str), // [Browser]
+    Quoted(&'a str), // "Browser"
+    Style(&'a str),  // {red_color}
     Text(&'a str),
 }
 
