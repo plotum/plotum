@@ -1,8 +1,8 @@
 use super::comment::Comments;
 use super::lexer::lex_line;
 use super::token::Token;
-use crate::error::ParseError;
-use crate::ir::{Diagram, Edge};
+use crate::error::{ParseError, Span};
+use crate::ir::{ArrowKind, Diagram, Edge, Node, Shape};
 
 pub fn parse(source: &str) -> Result<Diagram, ParseError> {
     let mut diagram = Diagram::default();
@@ -15,28 +15,8 @@ pub fn parse(source: &str) -> Result<Diagram, ParseError> {
             continue;
         }
 
-        let tokens = lex_line(line, index + 1);
-
-        match tokens.as_slice() {
-            // Check only here if a -> b exists
-            [
-                (Token::Ident(from), span),
-                (Token::Arrow(kind), _),
-                (Token::Ident(to), _),
-            ] => {
-                diagram.edges.push(Edge {
-                    // from : start of first Ident
-                    // to : start of the second Ident
-                    from: from.to_string(),
-                    to: to.to_string(),
-                    kind: *kind,
-                    span: *span,
-                });
-            }
-            // Anything : Error (for now)
-            [(_, span), ..] => return Err(ParseError::ExpectedEdge { span: *span }),
-            [] => {}
-        }
+        let lexed = lex_line(line, index + 1)?;
+        parse_line(lexed, &mut diagram)?;
     }
 
     comments.finish()?;
@@ -44,15 +24,89 @@ pub fn parse(source: &str) -> Result<Diagram, ParseError> {
     Ok(diagram)
 }
 
+// Each arm is one accepted line shape
+fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<(), ParseError> {
+    use Token::{Arrow, Ident, Round, Square, Text};
+
+    // Tokens and their positions in two lists
+    let (tokens, spans): (Vec<Token>, Vec<Span>) = lexed.into_iter().unzip();
+
+    // skip empty list
+    let Some(&line_span) = spans.first() else {
+        return Ok(());
+    };
+
+    match tokens.as_slice() {
+        // browser (Browser)
+        [Ident(id), Round(label)] => diagram.nodes.push(circle_node(id, label, line_span)),
+
+        // s1 [Serveur 1 | WebSocket]
+        [Ident(id), Square(body)] => diagram.nodes.push(box_node(id, body, line_span)),
+
+        // a -> b
+        [Ident(from), Arrow(kind), Ident(to)] => {
+            diagram.edges.push(edge(from, *kind, to, line_span));
+        }
+
+        // a -> b : label
+        [Ident(from), Arrow(kind), Ident(to), Text(label)] => {
+            let mut labelled = edge(from, *kind, to, line_span);
+            labelled.label = Some(label.to_string());
+            diagram.edges.push(labelled);
+        }
+
+        // Any other line shape
+        _ => return Err(ParseError::UnknownLine { span: line_span }),
+    }
+
+    Ok(())
+}
+
+fn circle_node(id: &str, label: &str, span: Span) -> Node {
+    Node {
+        id: id.to_string(),
+        label: label.trim().to_string(),
+        shape: Shape::Circle,
+        span,
+    }
+}
+
+// `Serveur 1 | WebSocket` gives the label "Serveur 1" and the subtext "WebSocket"
+fn box_node(id: &str, body: &str, span: Span) -> Node {
+    let (label, subtext) = match body.split_once('|') {
+        Some((label, subtext)) => (label, Some(subtext.trim().to_string())),
+        None => (body, None),
+    };
+
+    Node {
+        id: id.to_string(),
+        label: label.trim().to_string(),
+        shape: Shape::Box { subtext },
+        span,
+    }
+}
+
+fn edge(from: &str, kind: ArrowKind, to: &str, span: Span) -> Edge {
+    Edge {
+        from: from.to_string(),
+        to: to.to_string(),
+        kind,
+        span,
+        // label is add after creation (not required)
+        label: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{ArrowKind, Direction, Stroke};
+    use crate::ir::{Direction, Stroke};
 
     #[test]
     fn parses_an_edge() {
         let diagram = parse("a -> b").unwrap();
         assert_eq!(diagram.edges[0].from, "a");
+        assert_eq!(diagram.edges[0].label, None);
     }
 
     #[test]
@@ -65,6 +119,37 @@ mod tests {
                 direction: Direction::Backward
             }
         );
+    }
+
+    #[test]
+    fn parses_an_edge_label_with_colons() {
+        let diagram = parse("a -> b : HTTP 200 : OK").unwrap();
+        assert_eq!(diagram.edges[0].label.as_deref(), Some("HTTP 200 : OK"));
+    }
+
+    #[test]
+    fn parses_a_circle_node() {
+        let diagram = parse("alice (Alice B)").unwrap();
+        assert_eq!(diagram.nodes[0].label, "Alice B");
+        assert_eq!(diagram.nodes[0].shape, Shape::Circle);
+    }
+
+    #[test]
+    fn parses_a_box_node_with_subtext() {
+        let diagram = parse("s1 [Serveur 1 | WebSocket]").unwrap();
+        assert_eq!(diagram.nodes[0].label, "Serveur 1");
+        assert_eq!(
+            diagram.nodes[0].shape,
+            Shape::Box {
+                subtext: Some("WebSocket".to_string())
+            }
+        );
+    }
+
+    #[test]
+    fn parses_a_box_node_without_subtext() {
+        let diagram = parse("api [API]").unwrap();
+        assert_eq!(diagram.nodes[0].shape, Shape::Box { subtext: None });
     }
 
     #[test]
@@ -89,6 +174,36 @@ mod tests {
     #[test]
     fn rejects_an_incomplete_edge() {
         let error = parse("a ->").unwrap_err();
-        assert_eq!(error.to_string(), "1:1: expected `a -> b`");
+        assert_eq!(
+            error,
+            ParseError::UnknownLine {
+                span: Span {
+                    line: 1,
+                    column: 1,
+                    length: 1
+                }
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_trailing_tokens_after_an_edge() {
+        let error = parse("a -> b c").unwrap_err();
+        assert_eq!(
+            error,
+            ParseError::UnknownLine {
+                span: Span {
+                    line: 1,
+                    column: 1,
+                    length: 1
+                }
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_an_unclosed_node_label() {
+        let error = parse("api [API").unwrap_err();
+        assert_eq!(error.to_string(), "1:5: expected `]` to close this");
     }
 }
