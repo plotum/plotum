@@ -2,8 +2,16 @@ use crate::error::Span;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Diagram {
+    pub header: Header,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Header {
+    pub title: Option<String>,      // title : lorem ipsum
+    pub subtitle: Option<String>,   // subtitle : lorem ipsum
+    pub footer: Option<String>,     // footer: @johndoe
 }
 
 #[derive(Debug, PartialEq, Eq)]
