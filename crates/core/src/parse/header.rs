@@ -10,7 +10,7 @@ pub(crate) fn set_header(
     let key_owned = || key.to_string();
 
     // Header have to be configure in the top's file
-    if !diagram.nodes.is_empty() || !diagram.edges.is_empty() {
+    if !diagram.sections.is_empty() {
         return Err(ParseError::HeaderAfterBody {
             key: key_owned(),
             span,
@@ -90,7 +90,7 @@ mod tests {
         let error = parse("api [API]\nfooter: @johndoe").unwrap_err();
         assert_eq!(
             error.to_string(),
-            "2:1: expected `footer:` before the first node or edge"
+            "2:1: expected `footer:` before the first section, node or edge"
         );
     }
 }
