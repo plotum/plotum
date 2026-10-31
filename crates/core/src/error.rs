@@ -17,4 +17,6 @@ pub enum ParseError {
     UnclosedDelimiter { expected: char, span: Span },
     #[error("{}:{}: expected `*/` to close the comment", span.line, span.column)]
     UnclosedComment { span: Span },
+    #[error("{}:{}: expected `# plotum 1`, found `{found}`", span.line, span.column)]
+    InvalidVersion { found: String, span: Span },
 }

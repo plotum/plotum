@@ -48,7 +48,8 @@ section info "Payment"
 ## Version line
 
 The first line declares the syntax version. `# plotum 1` covers every
-1.x version of the engine.
+1.x version of the engine. The line is optional, but when present it must be the
+very first line; any other version is rejected with `InvalidVersion`.
 
 ```plotum
 # plotum 1

@@ -1,6 +1,7 @@
 use super::comment::Comments;
 use super::lexer::lex_line;
 use super::token::Token;
+use super::version::{check_version, is_version_line};
 use crate::error::{ParseError, Span};
 use crate::ir::{ArrowKind, Diagram, Edge, Node, Shape};
 
@@ -11,6 +12,12 @@ pub fn parse(source: &str) -> Result<Diagram, ParseError> {
 
     // Read each line
     for (index, line) in source.lines().enumerate() {
+        // The version line is optional, but only allowed on the first line
+        if index == 0 && is_version_line(line) {
+            check_version(line, index + 1)?;
+            continue;
+        }
+
         if comments.skip(line, index + 1) {
             continue;
         }
@@ -169,6 +176,27 @@ mod tests {
     fn rejects_unclosed_block_comment() {
         let error = parse("a -> b\n  /* never closed\nc -> d").unwrap_err();
         assert_eq!(error.to_string(), "2:3: expected `*/` to close the comment");
+    }
+
+    #[test]
+    fn accepts_a_version_line_first() {
+        let diagram = parse("# plotum 1\na -> b").unwrap();
+        assert_eq!(diagram.edges.len(), 1);
+    }
+
+    #[test]
+    fn rejects_an_unsupported_version() {
+        let error = parse("# plotum 2\na -> b").unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "1:1: expected `# plotum 1`, found `# plotum 2`"
+        );
+    }
+
+    #[test]
+    fn rejects_a_version_line_after_the_first_line() {
+        let error = parse("a -> b\n# plotum 1").unwrap_err();
+        assert!(matches!(error, ParseError::UnknownLine { .. }));
     }
 
     #[test]
