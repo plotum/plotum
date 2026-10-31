@@ -78,7 +78,7 @@ subtitle: Idempotency keys
 footer: @jonh-doe
 ```
 
-Header lines are optional and must come before the first node or link. Each one
+Header lines are optional and must come before the first section, node or link. Each one
 may appear only once and needs a text after the `:`.
 
 ## Nodes
@@ -151,6 +151,9 @@ section ok "With cache"
 ```
 
 A section lasts until the next `section`. Indentation is only decorative.
+
+Nodes and links written before the first `section` belong to an implicit `plain`
+section without a heading, so a diagram does not need any section.
 
 ## Notes
 
