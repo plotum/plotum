@@ -19,4 +19,14 @@ pub enum ParseError {
     UnclosedComment { span: Span },
     #[error("{}:{}: expected `# plotum 1`, found `{found}`", span.line, span.column)]
     InvalidVersion { found: String, span: Span },
+    #[error("{}:{}: expected a text after `{key}:`", span.line, span.column)]
+    EmptyHeader { key: String, span: Span },
+    #[error("{}:{}: expected only one `{key}:`, found a second one", span.line, span.column)]
+    DuplicateHeader { key: String, span: Span },
+    #[error(
+        "{}:{}: expected `{key}:` before the first node or edge",
+        span.line,
+        span.column
+    )]
+    HeaderAfterBody { key: String, span: Span },
 }
