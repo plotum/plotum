@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Span {
     pub line: usize,
     pub column: usize,
@@ -7,6 +7,8 @@ pub struct Span {
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ParseError {
+
+    // Global errors
     #[error(
         "{}:{}: expected a node (`id (Label)`, `id [Label]`) or an edge (`a -> b`)",
         span.line,
@@ -20,13 +22,29 @@ pub enum ParseError {
     #[error("{}:{}: expected `# plotum 1`, found `{found}`", span.line, span.column)]
     InvalidVersion { found: String, span: Span },
     #[error("{}:{}: expected a text after `{key}:`", span.line, span.column)]
+
+    // Header Errors
     EmptyHeader { key: String, span: Span },
     #[error("{}:{}: expected only one `{key}:`, found a second one", span.line, span.column)]
     DuplicateHeader { key: String, span: Span },
     #[error(
-        "{}:{}: expected `{key}:` before the first node or edge",
+        "{}:{}: expected `{key}:` before the first section, node or edge",
         span.line,
         span.column
     )]
     HeaderAfterBody { key: String, span: Span },
+    #[error(
+        "{}:{}: expected a section type (`bad`, `ok`, `info`, `warn`, `plain`), found `{found}`",
+        span.line,
+        span.column
+    )]
+
+    // Section Errors
+    UnknownSectionKind { found: String, span: Span },
+    #[error(
+        "{}:{}: expected a section as `section <type> \"Label\"`",
+        span.line,
+        span.column
+    )]
+    InvalidSection { span: Span },
 }
