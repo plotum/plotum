@@ -1,5 +1,7 @@
 use super::comment::Comments;
+use super::header::set_header;
 use super::lexer::lex_line;
+use super::section::{current_section, open_section};
 use super::token::Token;
 use super::version::{check_version, is_version_line};
 use crate::error::{ParseError, Span};
@@ -33,7 +35,7 @@ pub fn parse(source: &str) -> Result<Diagram, ParseError> {
 
 // Each arm is one accepted line shape
 fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<(), ParseError> {
-    use Token::{Arrow, Ident, Round, Square, Text};
+    use Token::{Arrow, Ident, Quoted, Round, Square, Text};
 
     // Tokens and their positions in two lists
     let (tokens, spans): (Vec<Token>, Vec<Span>) = lexed.into_iter().unzip();
@@ -45,22 +47,42 @@ fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<()
 
     match tokens.as_slice() {
         // browser (Browser)
-        [Ident(id), Round(label)] => diagram.nodes.push(circle_node(id, label, line_span)),
+        [Ident(id), Round(label)] => {
+            let node = circle_node(id, label, line_span);
+            current_section(diagram, line_span).nodes.push(node);
+        }
+
+        // title: Checkout
+        [Ident(key @ ("title" | "subtitle" | "footer")), Text(text)] => {
+            set_header(diagram, key, text, line_span)?;
+        }
+
+        // section ok "With cache"
+        [Ident("section"), Ident(kind), Quoted(label)] => {
+            open_section(diagram, kind, label, line_span)?;
+        }
 
         // s1 [Serveur 1 | WebSocket]
-        [Ident(id), Square(body)] => diagram.nodes.push(box_node(id, body, line_span)),
+        [Ident(id), Square(body)] => {
+            let node = box_node(id, body, line_span);
+            current_section(diagram, line_span).nodes.push(node);
+        }
 
         // a -> b
         [Ident(from), Arrow(kind), Ident(to)] => {
-            diagram.edges.push(edge(from, *kind, to, line_span));
+            let edge = edge(from, *kind, to, line_span);
+            current_section(diagram, line_span).edges.push(edge);
         }
 
         // a -> b : label
         [Ident(from), Arrow(kind), Ident(to), Text(label)] => {
             let mut labelled = edge(from, *kind, to, line_span);
             labelled.label = Some(label.to_string());
-            diagram.edges.push(labelled);
+            current_section(diagram, line_span).edges.push(labelled);
         }
+
+        // `section ok` without label: after the node and edge arms, so `section -> b` stays an edge
+        [Ident("section"), ..] => return Err(ParseError::InvalidSection { span: line_span }),
 
         // Any other line shape
         _ => return Err(ParseError::UnknownLine { span: line_span }),
@@ -109,18 +131,26 @@ mod tests {
     use super::*;
     use crate::ir::{Direction, Stroke};
 
+    fn nodes(diagram: &Diagram) -> Vec<&Node> {
+        diagram.sections.iter().flat_map(|s| &s.nodes).collect()
+    }
+
+    fn edges(diagram: &Diagram) -> Vec<&Edge> {
+        diagram.sections.iter().flat_map(|s| &s.edges).collect()
+    }
+
     #[test]
     fn parses_an_edge() {
         let diagram = parse("a -> b").unwrap();
-        assert_eq!(diagram.edges[0].from, "a");
-        assert_eq!(diagram.edges[0].label, None);
+        assert_eq!(edges(&diagram)[0].from, "a");
+        assert_eq!(edges(&diagram)[0].label, None);
     }
 
     #[test]
     fn keeps_arrow_stroke_and_direction() {
         let diagram = parse("a <-- b").unwrap();
         assert_eq!(
-            diagram.edges[0].kind,
+            edges(&diagram)[0].kind,
             ArrowKind::Pointed {
                 stroke: Stroke::Dashed,
                 direction: Direction::Backward
@@ -131,22 +161,22 @@ mod tests {
     #[test]
     fn parses_an_edge_label_with_colons() {
         let diagram = parse("a -> b : HTTP 200 : OK").unwrap();
-        assert_eq!(diagram.edges[0].label.as_deref(), Some("HTTP 200 : OK"));
+        assert_eq!(edges(&diagram)[0].label.as_deref(), Some("HTTP 200 : OK"));
     }
 
     #[test]
     fn parses_a_circle_node() {
         let diagram = parse("alice (Alice B)").unwrap();
-        assert_eq!(diagram.nodes[0].label, "Alice B");
-        assert_eq!(diagram.nodes[0].shape, Shape::Circle);
+        assert_eq!(nodes(&diagram)[0].label, "Alice B");
+        assert_eq!(nodes(&diagram)[0].shape, Shape::Circle);
     }
 
     #[test]
     fn parses_a_box_node_with_subtext() {
         let diagram = parse("s1 [Serveur 1 | WebSocket]").unwrap();
-        assert_eq!(diagram.nodes[0].label, "Serveur 1");
+        assert_eq!(nodes(&diagram)[0].label, "Serveur 1");
         assert_eq!(
-            diagram.nodes[0].shape,
+            nodes(&diagram)[0].shape,
             Shape::Box {
                 subtext: Some("WebSocket".to_string())
             }
@@ -156,20 +186,20 @@ mod tests {
     #[test]
     fn parses_a_box_node_without_subtext() {
         let diagram = parse("api [API]").unwrap();
-        assert_eq!(diagram.nodes[0].shape, Shape::Box { subtext: None });
+        assert_eq!(nodes(&diagram)[0].shape, Shape::Box { subtext: None });
     }
 
     #[test]
     fn skips_line_comments() {
         let diagram = parse("// a comment\na -> b").unwrap();
-        assert_eq!(diagram.edges.len(), 1);
+        assert_eq!(edges(&diagram).len(), 1);
     }
 
     #[test]
     fn skips_block_comments() {
         let source = "/* a comment\n   on several lines */\na -> b\n/* one line */";
         let diagram = parse(source).unwrap();
-        assert_eq!(diagram.edges.len(), 1);
+        assert_eq!(edges(&diagram).len(), 1);
     }
 
     #[test]
@@ -181,7 +211,7 @@ mod tests {
     #[test]
     fn accepts_a_version_line_first() {
         let diagram = parse("# plotum 1\na -> b").unwrap();
-        assert_eq!(diagram.edges.len(), 1);
+        assert_eq!(edges(&diagram).len(), 1);
     }
 
     #[test]

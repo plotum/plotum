@@ -2,8 +2,24 @@ use crate::error::Span;
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Diagram {
+    pub header: Header,
+    pub sections: Vec<Section>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Header {
+    pub title: Option<String>,    // title : lorem ipsum
+    pub subtitle: Option<String>, // subtitle : lorem ipsum
+    pub footer: Option<String>,   // footer: @johndoe
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Section {
+    pub kind: SectionKind,     // Ok, Bad....
+    pub label: Option<String>, // None for the "plain" section
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+    pub span: Span,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -50,4 +66,15 @@ pub enum ArrowKind {
         direction: Direction,
     },
     Line,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SectionKind {
+    Ok,
+    Bad,
+    Info,
+    Warn,
+    // Nodes written outside any `section` go to an implicit plain section
+    #[default]
+    Plain,
 }
