@@ -78,6 +78,9 @@ subtitle: Idempotency keys
 footer: @jonh-doe
 ```
 
+Header lines are optional and must come before the first node or link. Each one
+may appear only once and needs a text after the `:`.
+
 ## Nodes
 
 | Element | Syntax                  | Example                |

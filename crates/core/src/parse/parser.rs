@@ -1,4 +1,5 @@
 use super::comment::Comments;
+use super::header::set_header;
 use super::lexer::lex_line;
 use super::token::Token;
 use super::version::{check_version, is_version_line};
@@ -46,6 +47,11 @@ fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<()
     match tokens.as_slice() {
         // browser (Browser)
         [Ident(id), Round(label)] => diagram.nodes.push(circle_node(id, label, line_span)),
+
+        // title: Checkout
+        [Ident(key @ ("title" | "subtitle" | "footer")), Text(text)] => {
+            set_header(diagram, key, text, line_span)?;
+        }
 
         // s1 [Serveur 1 | WebSocket]
         [Ident(id), Square(body)] => diagram.nodes.push(box_node(id, body, line_span)),
