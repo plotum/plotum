@@ -211,6 +211,9 @@ api -> db {#22C55E} step=2 : SELECT
 
 On a link, write modifiers **before** the `:` label: everything after `:` is label text.
 
+Modifiers can come in any order, each one at most once. `icon=` and `@col,row`
+are rejected on a link.
+
 ## Theme
 
 ```plotum
