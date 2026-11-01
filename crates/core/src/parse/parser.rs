@@ -2,11 +2,12 @@ use super::comment::Comments;
 use super::header::set_header;
 use super::lexer::lex_line;
 use super::modifier::{Target, parse_modifiers};
+use super::node::{box_node, circle_node, push_node};
 use super::section::{add_note, current_section, open_section};
 use super::token::Token;
 use super::version::{check_version, is_version_line};
 use crate::error::{ParseError, Span};
-use crate::ir::{ArrowKind, Diagram, Edge, Node, Shape};
+use crate::ir::{ArrowKind, Diagram, Edge};
 
 pub fn parse(source: &str) -> Result<Diagram, ParseError> {
     let mut diagram = Diagram::default();
@@ -88,17 +89,6 @@ fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<()
     Ok(())
 }
 
-fn push_node(
-    diagram: &mut Diagram,
-    mut node: Node,
-    modifiers: &[Token<'_>],
-    spans: &[Span],
-) -> Result<(), ParseError> {
-    parse_modifiers(modifiers, spans, Target::Node)?.apply_to_node(&mut node);
-    current_section(diagram, node.span).nodes.push(node);
-    Ok(())
-}
-
 // Everything after `:` is the label, so modifiers come before it
 fn push_edge(
     diagram: &mut Diagram,
@@ -124,38 +114,6 @@ fn tail_spans<'a>(spans: &'a [Span], rest: &[Token<'_>]) -> &'a [Span] {
     spans.get(spans.len() - rest.len()..).unwrap_or_default()
 }
 
-fn circle_node(id: &str, label: &str, span: Span) -> Node {
-    Node {
-        id: id.to_string(),
-        label: label.trim().to_string(),
-        shape: Shape::Circle,
-        color: None,
-        icon: None,
-        pinned: None,
-        step: None,
-        span,
-    }
-}
-
-// `Serveur 1 | WebSocket` gives the label "Serveur 1" and the subtext "WebSocket"
-fn box_node(id: &str, body: &str, span: Span) -> Node {
-    let (label, subtext) = match body.split_once('|') {
-        Some((label, subtext)) => (label, Some(subtext.trim().to_string())),
-        None => (body, None),
-    };
-
-    Node {
-        id: id.to_string(),
-        label: label.trim().to_string(),
-        shape: Shape::Box { subtext },
-        color: None,
-        icon: None,
-        pinned: None,
-        step: None,
-        span,
-    }
-}
-
 fn edge(from: &str, kind: ArrowKind, to: &str, span: Span) -> Edge {
     Edge {
         from: from.to_string(),
@@ -173,10 +131,6 @@ fn edge(from: &str, kind: ArrowKind, to: &str, span: Span) -> Edge {
 mod tests {
     use super::*;
     use crate::ir::{Direction, Stroke};
-
-    fn nodes(diagram: &Diagram) -> Vec<&Node> {
-        diagram.sections.iter().flat_map(|s| &s.nodes).collect()
-    }
 
     fn edges(diagram: &Diagram) -> Vec<&Edge> {
         diagram.sections.iter().flat_map(|s| &s.edges).collect()
@@ -205,31 +159,6 @@ mod tests {
     fn parses_an_edge_label_with_colons() {
         let diagram = parse("a -> b : HTTP 200 : OK").unwrap();
         assert_eq!(edges(&diagram)[0].label.as_deref(), Some("HTTP 200 : OK"));
-    }
-
-    #[test]
-    fn parses_a_circle_node() {
-        let diagram = parse("alice (Alice B)").unwrap();
-        assert_eq!(nodes(&diagram)[0].label, "Alice B");
-        assert_eq!(nodes(&diagram)[0].shape, Shape::Circle);
-    }
-
-    #[test]
-    fn parses_a_box_node_with_subtext() {
-        let diagram = parse("s1 [Serveur 1 | WebSocket]").unwrap();
-        assert_eq!(nodes(&diagram)[0].label, "Serveur 1");
-        assert_eq!(
-            nodes(&diagram)[0].shape,
-            Shape::Box {
-                subtext: Some("WebSocket".to_string())
-            }
-        );
-    }
-
-    #[test]
-    fn parses_a_box_node_without_subtext() {
-        let diagram = parse("api [API]").unwrap();
-        assert_eq!(nodes(&diagram)[0].shape, Shape::Box { subtext: None });
     }
 
     #[test]
@@ -300,11 +229,5 @@ mod tests {
                 }
             }
         );
-    }
-
-    #[test]
-    fn rejects_an_unclosed_node_label() {
-        let error = parse("api [API").unwrap_err();
-        assert_eq!(error.to_string(), "1:5: expected `]` to close this");
     }
 }
