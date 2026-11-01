@@ -1,5 +1,5 @@
 use crate::error::{ParseError, Span};
-use crate::ir::{Diagram, Section, SectionKind};
+use crate::ir::{Diagram, Note, Section, SectionKind};
 
 // `section bad "Without cache"` opens a section that lasts until the next one
 pub(crate) fn open_section(
@@ -18,6 +18,7 @@ pub(crate) fn open_section(
         label: Some(label.trim().to_string()),
         nodes: Vec::new(),
         edges: Vec::new(),
+        notes: Vec::new(),
         span,
     });
     Ok(())
@@ -31,12 +32,26 @@ pub(crate) fn current_section(diagram: &mut Diagram, span: Span) -> &mut Section
             label: None,
             nodes: Vec::new(),
             edges: Vec::new(),
+            notes: Vec::new(),
             span,
         });
     }
 
     let last = diagram.sections.len() - 1;
     &mut diagram.sections[last]
+}
+
+pub(crate) fn add_note(diagram: &mut Diagram, text: &str, span: Span) -> Result<(), ParseError> {
+    if text.is_empty() {
+        return Err(ParseError::EmptyNote { span });
+    }
+
+    let note = Note {
+        text: text.to_string(),
+        span,
+    };
+    current_section(diagram, span).notes.push(note);
+    Ok(())
 }
 
 fn section_kind(word: &str) -> Option<SectionKind> {
@@ -93,6 +108,35 @@ mod tests {
         let diagram = parse("section (Section)\nsection -> b").unwrap();
         assert_eq!(diagram.sections[0].nodes[0].id, "section");
         assert_eq!(diagram.sections[0].edges[0].from, "section");
+    }
+
+    #[test]
+    fn adds_a_note_to_the_current_section() {
+        let source =
+            "section info \"Kafka\"\n  k [Kafka]\n  note: every server reads : the same topic";
+        let diagram = parse(source).unwrap();
+        let note = &diagram.sections[0].notes[0];
+        assert_eq!(note.text, "every server reads : the same topic");
+        assert_eq!(note.span.line, 3);
+    }
+
+    #[test]
+    fn puts_a_note_before_any_section_in_the_implicit_one() {
+        let diagram = parse("note: hello").unwrap();
+        assert_eq!(diagram.sections[0].kind, SectionKind::Plain);
+        assert_eq!(diagram.sections[0].notes.len(), 1);
+    }
+
+    #[test]
+    fn still_accepts_a_node_named_note() {
+        let diagram = parse("note (Note)").unwrap();
+        assert_eq!(diagram.sections[0].nodes[0].id, "note");
+    }
+
+    #[test]
+    fn rejects_an_empty_note() {
+        let error = parse("note:").unwrap_err();
+        assert_eq!(error.to_string(), "1:1: expected a text after `note:`");
     }
 
     #[test]

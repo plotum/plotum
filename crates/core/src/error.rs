@@ -46,4 +46,32 @@ pub enum ParseError {
         span.column
     )]
     InvalidSection { span: Span },
+    #[error("{}:{}: expected a text after `note:`", span.line, span.column)]
+    EmptyNote { span: Span },
+
+    // Modifier errors
+    #[error(
+        "{}:{}: expected a modifier (`{{color}}`, `@col,row`, `icon=name`, `step=N`)",
+        span.line,
+        span.column
+    )]
+    UnknownModifier { span: Span },
+    #[error("{}:{}: expected {expected} for `{modifier}`", span.line, span.column)]
+    InvalidModifier {
+        modifier: &'static str,
+        expected: &'static str,
+        span: Span,
+    },
+    #[error(
+        "{}:{}: expected only one `{modifier}` modifier, found a second one",
+        span.line,
+        span.column
+    )]
+    DuplicateModifier { modifier: &'static str, span: Span },
+    #[error(
+        "{}:{}: expected `{modifier}` only on a node, found it on an edge",
+        span.line,
+        span.column
+    )]
+    ModifierOnEdge { modifier: &'static str, span: Span },
 }

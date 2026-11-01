@@ -163,6 +163,9 @@ section info "Kafka"
   note: every server reads the same topic
 ```
 
+A note belongs to the current section (or to the implicit one before any
+`section`). Everything after `note:` is the note text, and it cannot be empty.
+
 ## Layout
 
 | Option     | Effect                                      | Example   |
@@ -207,6 +210,9 @@ api -> db {#22C55E} step=2 : SELECT
 ```
 
 On a link, write modifiers **before** the `:` label: everything after `:` is label text.
+
+Modifiers can come in any order, each one at most once. `icon=` and `@col,row`
+are rejected on a link.
 
 ## Theme
 

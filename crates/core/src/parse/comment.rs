@@ -35,3 +35,27 @@ impl Comments {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::parse::parse;
+
+    #[test]
+    fn skips_line_comments() {
+        let diagram = parse("// a comment\na -> b").unwrap();
+        assert_eq!(diagram.sections[0].edges.len(), 1);
+    }
+
+    #[test]
+    fn skips_block_comments() {
+        let source = "/* a comment\n   on several lines */\na -> b\n/* one line */";
+        let diagram = parse(source).unwrap();
+        assert_eq!(diagram.sections[0].edges.len(), 1);
+    }
+
+    #[test]
+    fn rejects_unclosed_block_comment() {
+        let error = parse("a -> b\n  /* never closed\nc -> d").unwrap_err();
+        assert_eq!(error.to_string(), "2:3: expected `*/` to close the comment");
+    }
+}

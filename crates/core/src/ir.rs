@@ -19,6 +19,13 @@ pub struct Section {
     pub label: Option<String>, // None for the "plain" section
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+    pub notes: Vec<Note>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Note {
+    pub text: String, // note: lorem ipsum
     pub span: Span,
 }
 
@@ -27,7 +34,17 @@ pub struct Node {
     pub id: String,
     pub label: String,
     pub shape: Shape,
+    pub color: Option<String>,   // {brand}, {#22C55E}
+    pub icon: Option<String>,    // icon=database
+    pub pinned: Option<GridPos>, // @2,0
+    pub step: Option<u16>,       // step=2
     pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GridPos {
+    pub col: u16,
+    pub row: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -43,6 +60,8 @@ pub struct Edge {
     pub kind: ArrowKind,
     pub span: Span,
     pub label: Option<String>,
+    pub color: Option<String>, // {red}
+    pub step: Option<u16>,     // step=2
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
