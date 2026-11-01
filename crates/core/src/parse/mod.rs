@@ -1,6 +1,7 @@
 mod comment;
 mod header;
 mod lexer;
+mod modifier;
 mod parser;
 mod section;
 mod token;
