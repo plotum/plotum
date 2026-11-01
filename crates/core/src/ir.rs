@@ -1,3 +1,5 @@
+use std::num::NonZeroU16;
+
 use crate::error::Span;
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -20,6 +22,7 @@ pub struct Section {
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
     pub notes: Vec<Note>,
+    pub wrap: Option<NonZeroU16>, // wrap: 4, nodes per row in snake layout
     pub span: Span,
 }
 
