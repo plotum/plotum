@@ -30,6 +30,7 @@ pub(crate) fn check_version(line: &str, line_number: usize) -> Result<(), ParseE
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parse::parse;
 
     #[test]
     fn accepts_the_supported_version() {
@@ -60,5 +61,26 @@ mod tests {
             error.to_string(),
             "1:1: expected `# plotum 1`, found `# mermaid`"
         );
+    }
+
+    #[test]
+    fn accepts_a_version_line_first() {
+        let diagram = parse("# plotum 1\na -> b").unwrap();
+        assert_eq!(diagram.sections[0].edges.len(), 1);
+    }
+
+    #[test]
+    fn rejects_an_unsupported_version_in_a_diagram() {
+        let error = parse("# plotum 2\na -> b").unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "1:1: expected `# plotum 1`, found `# plotum 2`"
+        );
+    }
+
+    #[test]
+    fn rejects_a_version_line_after_the_first_line() {
+        let error = parse("a -> b\n# plotum 1").unwrap_err();
+        assert!(matches!(error, ParseError::UnknownLine { .. }));
     }
 }
