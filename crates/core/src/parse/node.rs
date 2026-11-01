@@ -16,16 +16,7 @@ pub(crate) fn push_node(
 }
 
 pub(crate) fn circle_node(id: &str, label: &str, span: Span) -> Node {
-    Node {
-        id: id.to_string(),
-        label: label.trim().to_string(),
-        shape: Shape::Circle,
-        color: None,
-        icon: None,
-        pinned: None,
-        step: None,
-        span,
-    }
+    node(id, label, Shape::Circle, span)
 }
 
 // `Serveur 1 | WebSocket` gives the label "Serveur 1" and the subtext "WebSocket"
@@ -35,10 +26,15 @@ pub(crate) fn box_node(id: &str, body: &str, span: Span) -> Node {
         None => (body, None),
     };
 
+    node(id, label, Shape::Box { subtext }, span)
+}
+
+fn node(id: &str, label: &str, shape: Shape, span: Span) -> Node {
     Node {
         id: id.to_string(),
         label: label.trim().to_string(),
-        shape: Shape::Box { subtext },
+        shape,
+        // modifiers are set after creation, by `push_node`
         color: None,
         icon: None,
         pinned: None,
