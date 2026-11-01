@@ -1,4 +1,5 @@
 mod comment;
+mod edge;
 mod header;
 mod lexer;
 mod modifier;

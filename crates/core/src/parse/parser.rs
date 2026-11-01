@@ -1,13 +1,13 @@
 use super::comment::Comments;
+use super::edge::{edge, push_edge};
 use super::header::set_header;
 use super::lexer::lex_line;
-use super::modifier::{Target, parse_modifiers};
 use super::node::{box_node, circle_node, push_node};
-use super::section::{add_note, current_section, open_section};
+use super::section::{add_note, open_section};
 use super::token::Token;
 use super::version::{check_version, is_version_line};
 use crate::error::{ParseError, Span};
-use crate::ir::{ArrowKind, Diagram, Edge};
+use crate::ir::Diagram;
 
 pub fn parse(source: &str) -> Result<Diagram, ParseError> {
     let mut diagram = Diagram::default();
@@ -89,76 +89,18 @@ fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<()
     Ok(())
 }
 
-// Everything after `:` is the label, so modifiers come before it
-fn push_edge(
-    diagram: &mut Diagram,
-    mut edge: Edge,
-    rest: &[Token<'_>],
-    spans: &[Span],
-) -> Result<(), ParseError> {
-    let modifiers = match rest {
-        [modifiers @ .., Token::Text(label)] => {
-            edge.label = Some(label.to_string());
-            modifiers
-        }
-        _ => rest,
-    };
-
-    parse_modifiers(modifiers, spans, Target::Edge)?.apply_to_edge(&mut edge);
-    current_section(diagram, edge.span).edges.push(edge);
-    Ok(())
-}
-
 // The spans of `rest`, the last tokens of the line
 fn tail_spans<'a>(spans: &'a [Span], rest: &[Token<'_>]) -> &'a [Span] {
     spans.get(spans.len() - rest.len()..).unwrap_or_default()
 }
 
-fn edge(from: &str, kind: ArrowKind, to: &str, span: Span) -> Edge {
-    Edge {
-        from: from.to_string(),
-        to: to.to_string(),
-        kind,
-        span,
-        // label and modifiers are set after creation (not required)
-        label: None,
-        color: None,
-        step: None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ir::{Direction, Stroke};
+    use crate::ir::Edge;
 
     fn edges(diagram: &Diagram) -> Vec<&Edge> {
         diagram.sections.iter().flat_map(|s| &s.edges).collect()
-    }
-
-    #[test]
-    fn parses_an_edge() {
-        let diagram = parse("a -> b").unwrap();
-        assert_eq!(edges(&diagram)[0].from, "a");
-        assert_eq!(edges(&diagram)[0].label, None);
-    }
-
-    #[test]
-    fn keeps_arrow_stroke_and_direction() {
-        let diagram = parse("a <-- b").unwrap();
-        assert_eq!(
-            edges(&diagram)[0].kind,
-            ArrowKind::Pointed {
-                stroke: Stroke::Dashed,
-                direction: Direction::Backward
-            }
-        );
-    }
-
-    #[test]
-    fn parses_an_edge_label_with_colons() {
-        let diagram = parse("a -> b : HTTP 200 : OK").unwrap();
-        assert_eq!(edges(&diagram)[0].label.as_deref(), Some("HTTP 200 : OK"));
     }
 
     #[test]
@@ -199,35 +141,5 @@ mod tests {
     fn rejects_a_version_line_after_the_first_line() {
         let error = parse("a -> b\n# plotum 1").unwrap_err();
         assert!(matches!(error, ParseError::UnknownLine { .. }));
-    }
-
-    #[test]
-    fn rejects_an_incomplete_edge() {
-        let error = parse("a ->").unwrap_err();
-        assert_eq!(
-            error,
-            ParseError::UnknownLine {
-                span: Span {
-                    line: 1,
-                    column: 1,
-                    length: 1
-                }
-            }
-        );
-    }
-
-    #[test]
-    fn rejects_trailing_tokens_after_an_edge() {
-        let error = parse("a -> b c").unwrap_err();
-        assert_eq!(
-            error,
-            ParseError::UnknownModifier {
-                span: Span {
-                    line: 1,
-                    column: 8,
-                    length: 1
-                }
-            }
-        );
     }
 }
