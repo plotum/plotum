@@ -46,4 +46,6 @@ pub enum ParseError {
         span.column
     )]
     InvalidSection { span: Span },
+    #[error("{}:{}: expected a text after `note:`", span.line, span.column)]
+    EmptyNote { span: Span },
 }

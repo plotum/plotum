@@ -163,6 +163,9 @@ section info "Kafka"
   note: every server reads the same topic
 ```
 
+A note belongs to the current section (or to the implicit one before any
+`section`). Everything after `note:` is the note text, and it cannot be empty.
+
 ## Layout
 
 | Option     | Effect                                      | Example   |

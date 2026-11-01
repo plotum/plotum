@@ -19,6 +19,13 @@ pub struct Section {
     pub label: Option<String>, // None for the "plain" section
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+    pub notes: Vec<Note>,
+    pub span: Span,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Note {
+    pub text: String, // note: lorem ipsum
     pub span: Span,
 }
 

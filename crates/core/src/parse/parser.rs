@@ -1,7 +1,7 @@
 use super::comment::Comments;
 use super::header::set_header;
 use super::lexer::lex_line;
-use super::section::{current_section, open_section};
+use super::section::{add_note, current_section, open_section};
 use super::token::Token;
 use super::version::{check_version, is_version_line};
 use crate::error::{ParseError, Span};
@@ -56,6 +56,9 @@ fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<()
         [Ident(key @ ("title" | "subtitle" | "footer")), Text(text)] => {
             set_header(diagram, key, text, line_span)?;
         }
+
+        // note: every server reads the same topic
+        [Ident("note"), Text(text)] => add_note(diagram, text, line_span)?,
 
         // section ok "With cache"
         [Ident("section"), Ident(kind), Quoted(label)] => {
