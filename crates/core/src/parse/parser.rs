@@ -1,6 +1,7 @@
 use super::comment::Comments;
 use super::header::set_header;
 use super::lexer::lex_line;
+use super::modifier::{Target, parse_modifiers};
 use super::section::{add_note, current_section, open_section};
 use super::token::Token;
 use super::version::{check_version, is_version_line};
@@ -46,10 +47,10 @@ fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<()
     };
 
     match tokens.as_slice() {
-        // browser (Browser)
-        [Ident(id), Round(label)] => {
+        // browser (Browser) step=1
+        [Ident(id), Round(label), rest @ ..] => {
             let node = circle_node(id, label, line_span);
-            current_section(diagram, line_span).nodes.push(node);
+            push_node(diagram, node, rest, tail_spans(&spans, rest))?;
         }
 
         // title: Checkout
@@ -65,23 +66,16 @@ fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<()
             open_section(diagram, kind, label, line_span)?;
         }
 
-        // s1 [Serveur 1 | WebSocket]
-        [Ident(id), Square(body)] => {
+        // s1 [Serveur 1 | WebSocket] {brand}
+        [Ident(id), Square(body), rest @ ..] => {
             let node = box_node(id, body, line_span);
-            current_section(diagram, line_span).nodes.push(node);
+            push_node(diagram, node, rest, tail_spans(&spans, rest))?;
         }
 
-        // a -> b
-        [Ident(from), Arrow(kind), Ident(to)] => {
+        // a -> b {red} step=2 : label
+        [Ident(from), Arrow(kind), Ident(to), rest @ ..] => {
             let edge = edge(from, *kind, to, line_span);
-            current_section(diagram, line_span).edges.push(edge);
-        }
-
-        // a -> b : label
-        [Ident(from), Arrow(kind), Ident(to), Text(label)] => {
-            let mut labelled = edge(from, *kind, to, line_span);
-            labelled.label = Some(label.to_string());
-            current_section(diagram, line_span).edges.push(labelled);
+            push_edge(diagram, edge, rest, tail_spans(&spans, rest))?;
         }
 
         // `section ok` without label: after the node and edge arms, so `section -> b` stays an edge
@@ -94,11 +88,51 @@ fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<()
     Ok(())
 }
 
+fn push_node(
+    diagram: &mut Diagram,
+    mut node: Node,
+    modifiers: &[Token<'_>],
+    spans: &[Span],
+) -> Result<(), ParseError> {
+    parse_modifiers(modifiers, spans, Target::Node)?.apply_to_node(&mut node);
+    current_section(diagram, node.span).nodes.push(node);
+    Ok(())
+}
+
+// Everything after `:` is the label, so modifiers come before it
+fn push_edge(
+    diagram: &mut Diagram,
+    mut edge: Edge,
+    rest: &[Token<'_>],
+    spans: &[Span],
+) -> Result<(), ParseError> {
+    let modifiers = match rest {
+        [modifiers @ .., Token::Text(label)] => {
+            edge.label = Some(label.to_string());
+            modifiers
+        }
+        _ => rest,
+    };
+
+    parse_modifiers(modifiers, spans, Target::Edge)?.apply_to_edge(&mut edge);
+    current_section(diagram, edge.span).edges.push(edge);
+    Ok(())
+}
+
+// The spans of `rest`, the last tokens of the line
+fn tail_spans<'a>(spans: &'a [Span], rest: &[Token<'_>]) -> &'a [Span] {
+    spans.get(spans.len() - rest.len()..).unwrap_or_default()
+}
+
 fn circle_node(id: &str, label: &str, span: Span) -> Node {
     Node {
         id: id.to_string(),
         label: label.trim().to_string(),
         shape: Shape::Circle,
+        color: None,
+        icon: None,
+        pinned: None,
+        step: None,
         span,
     }
 }
@@ -114,6 +148,10 @@ fn box_node(id: &str, body: &str, span: Span) -> Node {
         id: id.to_string(),
         label: label.trim().to_string(),
         shape: Shape::Box { subtext },
+        color: None,
+        icon: None,
+        pinned: None,
+        step: None,
         span,
     }
 }
@@ -124,8 +162,10 @@ fn edge(from: &str, kind: ArrowKind, to: &str, span: Span) -> Edge {
         to: to.to_string(),
         kind,
         span,
-        // label is add after creation (not required)
+        // label and modifiers are set after creation (not required)
         label: None,
+        color: None,
+        step: None,
     }
 }
 
@@ -252,10 +292,10 @@ mod tests {
         let error = parse("a -> b c").unwrap_err();
         assert_eq!(
             error,
-            ParseError::UnknownLine {
+            ParseError::UnknownModifier {
                 span: Span {
                     line: 1,
-                    column: 1,
+                    column: 8,
                     length: 1
                 }
             }
