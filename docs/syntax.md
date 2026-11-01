@@ -188,6 +188,9 @@ section info "Pipeline"
 With `wrap`, rows alternate direction (left to right, then right to left) so long
 flows stay compact.
 
+`wrap` applies to the current section, takes a whole number above 0, and may
+appear once per section.
+
 ```plotum
 client (Client) @0,0
 server (Server) @2,0

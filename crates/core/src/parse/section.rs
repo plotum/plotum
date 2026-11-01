@@ -19,6 +19,7 @@ pub(crate) fn open_section(
         nodes: Vec::new(),
         edges: Vec::new(),
         notes: Vec::new(),
+        wrap: None,
         span,
     });
     Ok(())
@@ -33,6 +34,7 @@ pub(crate) fn current_section(diagram: &mut Diagram, span: Span) -> &mut Section
             nodes: Vec::new(),
             edges: Vec::new(),
             notes: Vec::new(),
+            wrap: None,
             span,
         });
     }
@@ -54,6 +56,18 @@ pub(crate) fn add_note(diagram: &mut Diagram, text: &str, span: Span) -> Result<
     Ok(())
 }
 
+// `wrap: 4` puts 4 nodes per row, then the next row goes the other way
+pub(crate) fn set_wrap(diagram: &mut Diagram, text: &str, span: Span) -> Result<(), ParseError> {
+    let wrap = text.parse().map_err(|_| ParseError::InvalidWrap { span })?;
+
+    let section = current_section(diagram, span);
+    if section.wrap.is_some() {
+        return Err(ParseError::DuplicateWrap { span });
+    }
+    section.wrap = Some(wrap);
+    Ok(())
+}
+
 fn section_kind(word: &str) -> Option<SectionKind> {
     match word {
         "bad" => Some(SectionKind::Bad),
@@ -67,6 +81,8 @@ fn section_kind(word: &str) -> Option<SectionKind> {
 
 #[cfg(test)]
 mod tests {
+    use std::num::NonZeroU16;
+
     use crate::error::ParseError;
     use crate::ir::SectionKind;
     use crate::parse::parse;
@@ -137,6 +153,34 @@ mod tests {
     fn rejects_an_empty_note() {
         let error = parse("note:").unwrap_err();
         assert_eq!(error.to_string(), "1:1: expected a text after `note:`");
+    }
+
+    #[test]
+    fn sets_the_wrap_of_the_current_section() {
+        let diagram = parse("section info \"A\"\n  a [A]\nsection ok \"B\"\n  wrap: 4").unwrap();
+        assert_eq!(diagram.sections[0].wrap, None);
+        assert_eq!(diagram.sections[1].wrap, NonZeroU16::new(4));
+    }
+
+    #[test]
+    fn rejects_a_wrap_that_is_not_a_number() {
+        let error = parse("wrap: four").unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "1:1: expected a whole number above 0 after `wrap:`, like `wrap: 4`"
+        );
+    }
+
+    #[test]
+    fn rejects_a_zero_wrap() {
+        let error = parse("wrap: 0").unwrap_err();
+        assert!(matches!(error, ParseError::InvalidWrap { .. }));
+    }
+
+    #[test]
+    fn rejects_a_second_wrap_in_the_same_section() {
+        let error = parse("section ok \"A\"\n  wrap: 2\n  wrap: 3").unwrap_err();
+        assert!(matches!(error, ParseError::DuplicateWrap { span } if span.line == 3));
     }
 
     #[test]

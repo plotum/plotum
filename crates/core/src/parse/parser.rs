@@ -3,7 +3,7 @@ use super::edge::{edge, push_edge};
 use super::header::set_header;
 use super::lexer::lex_line;
 use super::node::{box_node, circle_node, push_node};
-use super::section::{add_note, open_section};
+use super::section::{add_note, open_section, set_wrap};
 use super::token::Token;
 use super::version::{check_version, is_version_line};
 use crate::error::{ParseError, Span};
@@ -61,6 +61,9 @@ fn parse_line(lexed: Vec<(Token<'_>, Span)>, diagram: &mut Diagram) -> Result<()
 
         // note: every server reads the same topic
         [Ident("note"), Text(text)] => add_note(diagram, text, line_span)?,
+
+        // wrap: 4
+        [Ident("wrap"), Text(text)] => set_wrap(diagram, text, line_span)?,
 
         // section ok "With cache"
         [Ident("section"), Ident(kind), Quoted(label)] => {

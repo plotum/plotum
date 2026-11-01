@@ -48,6 +48,18 @@ pub enum ParseError {
     InvalidSection { span: Span },
     #[error("{}:{}: expected a text after `note:`", span.line, span.column)]
     EmptyNote { span: Span },
+    #[error(
+        "{}:{}: expected a whole number above 0 after `wrap:`, like `wrap: 4`",
+        span.line,
+        span.column
+    )]
+    InvalidWrap { span: Span },
+    #[error(
+        "{}:{}: expected only one `wrap:` per section, found a second one",
+        span.line,
+        span.column
+    )]
+    DuplicateWrap { span: Span },
 
     // Modifier errors
     #[error(
